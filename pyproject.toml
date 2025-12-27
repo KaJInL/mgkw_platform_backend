@@ -1,0 +1,29 @@
+[project]
+name = "mgkw-platform-backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = "==3.12.*"
+dependencies = [
+    "aerich==0.8.2",
+    "aiomysql==0.2.0",
+    "aioredlock>=0.7.3",
+    "celery>=5.5.3",
+    "colorama==0.4.6",
+    "cryptography>=45.0.7",
+    "fastapi[all]==0.115.6",
+    "gunicorn==23.0.0",
+    "pycryptodome==3.23.0",
+    "python-redis-lock==4.0.0",
+    "pyyaml>=6.0",
+    "redis>=5.1.0",
+    "requests==2.32.3",
+    "setuptools>=80.9.0",
+    "tomlkit>=0.13.3",
+    "tortoise-orm==0.22.0",
+]
+
+[tool.aerich]
+tortoise_orm = "application.core.database.TORTOISE_ORM"
+location = "./migrations"
+src_folder = "./."

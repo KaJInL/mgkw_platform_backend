@@ -1,0 +1,32 @@
+# Python相关
+*.pyc
+*.pyo
+__pycache__/
+*.pyd
+
+# FastAPI相关
+instance/
+.env
+.venv/
+venv/
+
+# IDE 配置文件
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+
+# uploads目录（你提到的上传文件目录）
+uploads/
+
+# MySQL数据库相关（如果你使用了 MySQL）
+*.db
+
+# 其他的可能会上传到仓库的配置文件
+*.log
+*.bak
+*.swp
+
+# 数据库迁移信息
+migrations/
