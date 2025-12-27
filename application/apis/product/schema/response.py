@@ -40,3 +40,9 @@ class VipProductInfoRes(BaseModel):
     sort: int
     created_at: Optional[str]
     updated_at: Optional[str]
+
+class PurchasedDesignProductItemRes(BaseModel):
+    """用户已购买的设计作品商品项"""
+    img_url: Optional[str] = None
+    name: str
+    product_id: Optional[int] = None
