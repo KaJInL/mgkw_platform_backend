@@ -36,3 +36,15 @@ async def update_vip_product(req: UpdateVipProductReq):
     result = await vip_product_admin_service.update_vip_product(req)
     return ResponseHelper.success(result)
 
+@vip_product_admin.post(
+    "/admin/product/vip/cache/clear", 
+    summary="清除VIP产品列表缓存"
+)
+async def clear_vip_product_cache():
+    """
+    清除VIP产品列表缓存
+    当数据结构变更或需要强制刷新缓存时使用
+    """
+    await vip_product_service.invalidate_all_cache()
+    return ResponseHelper.success({"message": "缓存已清除"})
+

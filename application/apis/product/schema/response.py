@@ -1,5 +1,5 @@
 from typing import List, Optional, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from application.common.models.design import DesignState
 from application.common.schema.product_schema import ProductWithSkusInfo
 
@@ -27,19 +27,33 @@ class VipPlanInfo(BaseModel):
     days: int
     price: Any
     privileges: Optional[str]
-    bg_image_url: Optional[str]
+    bg_image_url: Optional[str] = Field(alias="bgImageUrl")
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
 
 class VipProductInfoRes(BaseModel):
     id: int
+    product_id: int = Field(alias="productId")  # 商品ID（与id相同，方便前端使用）
     name: str
     subtitle: Optional[str]
     description: Optional[str]
-    vip_plan_id: Optional[int]
-    vip_plan: Optional[VipPlanInfo]
-    is_published: bool
+    vip_plan_id: Optional[int] = Field(alias="vipPlanId")
+    vip_plan: Optional[VipPlanInfo] = Field(alias="vipPlan")
+    # SKU 相关字段（VIP 商品只有一个 SKU，取第一个）
+    sku_id: Optional[int] = Field(alias="skuId")
+    sku_name: Optional[str] = Field(alias="skuName")
+    price: Optional[Any]
+    original_price: Optional[Any] = Field(alias="originalPrice")
+    is_published: bool = Field(alias="isPublished")
     sort: int
-    created_at: Optional[str]
-    updated_at: Optional[str]
+    created_at: Optional[str] = Field(alias="createdAt")
+    updated_at: Optional[str] = Field(alias="updatedAt")
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
 
 class PurchasedDesignProductItemRes(BaseModel):
     """用户已购买的设计作品商品项"""

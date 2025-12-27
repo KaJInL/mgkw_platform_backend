@@ -25,7 +25,9 @@ async def login_by_pwd(req: LoginByPwdReq):
 
 @api.get("/account/get-user-info", summary="获取用户信息", response_model=BaseResponse[LoginUserInfo])
 async def get_user_info():
-    return ResponseHelper.success(await account_service.get_login_user_info())
+    login_user_info = await account_service.get_login_user_info()
+    user_dict = login_user_info.model_dump(exclude={'auths'})
+    return ResponseHelper.success(user_dict)
 
 
 @api.post("/account/miniprogram/wx-login-by-code", summary="微信小程序获取session",
