@@ -16,6 +16,9 @@ class SysConfKeyEnum(str, Enum):
     DEFAULT_AVATAR = "default_avatar"
     IS_SUPERUSER_CREATED = "is_superuser_created"
     LOGO = "logo"
+    USER_AGREEMENT = "user_agreement"
+    PRIVACY_POLICY = "privacy_policy"
+    CUSTOMER_SERVICE_PHONE = "customer_service_phone"
 
 
 class SysConfService(BaseService[SysConf]):
@@ -195,8 +198,15 @@ class SysConfService(BaseService[SysConf]):
         cache_key = f"{self.REDIS_KEY_PREFIX}{sys_key}"
         deleted = await redis_client.delete(cache_key)
         
-        # 如果删除的是 DEFAULT_AVATAR 或 LOGO，同时删除 miniprogram_conf 的缓存
-        if sys_key in [SysConfKeyEnum.DEFAULT_AVATAR, SysConfKeyEnum.LOGO]:
+        # 如果删除的是小程序配置相关的 key，同时删除 miniprogram_conf 的缓存
+        miniprogram_keys = [
+            SysConfKeyEnum.DEFAULT_AVATAR,
+            SysConfKeyEnum.LOGO,
+            SysConfKeyEnum.USER_AGREEMENT,
+            SysConfKeyEnum.PRIVACY_POLICY,
+            SysConfKeyEnum.CUSTOMER_SERVICE_PHONE
+        ]
+        if sys_key in miniprogram_keys:
             await redis_client.delete(self.MINIPROGRAM_CONF_CACHE_KEY)
             logger.debug(f"删除 miniprogram_conf 缓存，因为 {sys_key} 已更新")
         
@@ -232,9 +242,9 @@ class SysConfService(BaseService[SysConf]):
 
     async def get_miniprogram_conf(self) -> Dict[str, Optional[str]]:
         """
-        获取小程序配置（DEFAULT_AVATAR 和 LOGO）
+        获取小程序配置（DEFAULT_AVATAR、LOGO、USER_AGREEMENT、PRIVACY_POLICY、CUSTOMER_SERVICE_PHONE）
         使用缓存提高性能
-        :return: 包含 default_avatar 和 logo 的字典
+        :return: 包含 default_avatar、logo、user_agreement、privacy_policy、customer_service_phone 的字典
         """
         # 先从缓存获取
         cached_data = await redis_client.get(self.MINIPROGRAM_CONF_CACHE_KEY)
@@ -243,13 +253,22 @@ class SysConfService(BaseService[SysConf]):
             return cached_data
         
         # 从数据库批量查询
-        keys = [SysConfKeyEnum.DEFAULT_AVATAR, SysConfKeyEnum.LOGO]
+        keys = [
+            SysConfKeyEnum.DEFAULT_AVATAR,
+            SysConfKeyEnum.LOGO,
+            SysConfKeyEnum.USER_AGREEMENT,
+            SysConfKeyEnum.PRIVACY_POLICY,
+            SysConfKeyEnum.CUSTOMER_SERVICE_PHONE
+        ]
         configs = await self.get_configs_by_keys(keys)
         
         # 构建结果字典
         result = {
             SysConfKeyEnum.DEFAULT_AVATAR: None,
-            SysConfKeyEnum.LOGO: None
+            SysConfKeyEnum.LOGO: None,
+            SysConfKeyEnum.USER_AGREEMENT: None,
+            SysConfKeyEnum.PRIVACY_POLICY: None,
+            SysConfKeyEnum.CUSTOMER_SERVICE_PHONE: None
         }
         
         for conf in configs:

@@ -104,5 +104,5 @@ async def get_by_key(
     """
     value = await sys_conf_admin_service.get_by_key(key)
     if value is None:
-        raise HTTPException(status_code=404, detail="配置不存在")
+        return ResponseHelper.error()
     return ResponseHelper.success({"value": value})
