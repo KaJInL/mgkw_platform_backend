@@ -47,6 +47,7 @@ class OrderDetail(BaseModel):
     """订单详情响应数据模型"""
     id: int = Field(description="订单ID")
     user_id: int = Field(description="用户ID", alias="userId")
+    name: Optional[str] = Field(None, description="订单名称")
     status: str = Field(description="订单状态")
     total_amount: str = Field(description="订单总金额", alias="totalAmount")
     pay_time: Optional[datetime] = Field(None, description="支付时间", alias="payTime")
@@ -58,6 +59,38 @@ class OrderDetail(BaseModel):
     created_at: datetime = Field(description="创建时间", alias="createdAt")
     updated_at: datetime = Field(description="更新时间", alias="updatedAt")
     items: List[OrderItemRes] = Field(description="订单项列表")
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class OrderSimple(BaseModel):
+    """订单简要信息响应数据模型（用于列表展示）"""
+    id: int = Field(description="订单ID")
+    user_id: int = Field(description="用户ID", alias="userId")
+    name: Optional[str] = Field(None, description="订单名称")
+    status: str = Field(description="订单状态")
+    total_amount: str = Field(description="订单总金额", alias="totalAmount")
+    pay_time: Optional[datetime] = Field(None, description="支付时间", alias="payTime")
+    expire_time: Optional[datetime] = Field(None, description="订单过期时间", alias="expireTime")
+    payment_type: Optional[str] = Field(None, description="支付类型", alias="paymentType")
+    merchant_order_no: Optional[str] = Field(None, description="商家订单号", alias="merchantOrderNo")
+    serial_no: Optional[str] = Field(None, description="流水号", alias="serialNo")
+    remark: Optional[str] = Field(None, description="备注")
+    created_at: datetime = Field(description="创建时间", alias="createdAt")
+    updated_at: datetime = Field(description="更新时间", alias="updatedAt")
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class OrderListRes(BaseModel):
+    """订单列表响应数据模型"""
+    list: List[OrderSimple] = Field(description="订单列表")
+    total: int = Field(description="总数")
+    hasNext: bool = Field(description="是否有下一页", alias="hasNext")
 
     class Config:
         from_attributes = True

@@ -26,6 +26,13 @@ class UserService(BaseService[User]):
         """
         return await self.get_one(email=email)
 
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """
+        使用用户名获取用户
+        :param username: 用户名
+        """
+        return await self.get_one(username=username)
+
 
 
 

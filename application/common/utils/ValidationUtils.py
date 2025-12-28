@@ -15,6 +15,9 @@ class ValidationUtils:
     # 邮箱正则表达式（基础版）
     EMAIL_PATTERN = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
 
+    # 用户名正则表达式（只允许字母、数字、下划线）
+    USERNAME_PATTERN = r'^[a-zA-Z0-9_]+$'
+
     # 身份证号正则表达式（18位）
     ID_CARD_PATTERN = r'^\d{17}[\dXx]$'
 
@@ -107,6 +110,54 @@ class ValidationUtils:
             raise ValueError('邮箱格式不正确')
 
         return email
+
+    @staticmethod
+    def is_valid_username(username: str) -> bool:
+        """
+        验证是否为有效的用户名
+        用户名只能包含字母、数字和下划线
+        
+        :param username: 用户名字符串
+        :return: 是否有效
+        """
+        if not username or not isinstance(username, str):
+            return False
+
+        username = username.strip()
+        
+        # 检查长度（1-64位）
+        if len(username) < 1 or len(username) > 64:
+            return False
+        
+        # 使用正则表达式验证格式（只允许字母、数字、下划线）
+        username_pattern = r'^[a-zA-Z0-9_]+$'
+        return bool(re.match(username_pattern, username))
+
+    @staticmethod
+    def validate_username(username: str) -> str:
+        """
+        验证用户名并返回处理后的用户名
+        如果验证失败则抛出 ValueError
+        
+        :param username: 用户名字符串
+        :return: 处理后的用户名
+        :raises ValueError: 用户名格式不正确
+        """
+        if not username:
+            raise ValueError('用户名不能为空')
+
+        username = username.strip()
+
+        if len(username) < 1:
+            raise ValueError('用户名不能为空')
+
+        if len(username) > 64:
+            raise ValueError('用户名长度不能超过64个字符')
+
+        if not ValidationUtils.is_valid_username(username):
+            raise ValueError('用户名只能包含字母、数字和下划线')
+
+        return username
 
     @staticmethod
     def is_valid_id_card(id_card: str) -> bool:

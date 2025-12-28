@@ -1,7 +1,7 @@
 import hashlib
 import random
 import string
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from tortoise.exceptions import IntegrityError
@@ -32,6 +32,7 @@ class AccountService:
     用户帐户认证service
     """
     CHANGE_USER_LOCK = "change_user_lock:"
+    UPDATE_USER_LOCK = "update_user_lock:"
     LOGIN_USER_INFO_KEY = "login_user_info:"
 
     @property
@@ -164,8 +165,8 @@ class AccountService:
 
             # 5. 构造 LoginUserInfo（使用工厂方法从 ORM 对象创建）
             login_user_info = LoginUserInfo.from_orm_objects(
-                user=user, 
-                roles=roles, 
+                user=user,
+                roles=roles,
                 user_vip=user_vip_info,
                 user_auths=user_auths
             )
@@ -242,15 +243,16 @@ class AccountService:
         try:
             # 获取当前登录用户信息
             login_user_info = await self.get_login_user_info()
-            
+            logger.error(f"login_user_info ==> {login_user_info}")
             # 检查VIP信息是否存在
             if not login_user_info.vip:
+                logger.error(f"login_user_info ==> not")
                 return False
-            
+
             # 检查VIP是否过期（end_time > 当前时间表示未过期）
-            current_time = datetime.now()
+            current_time = datetime.now(timezone(timedelta(hours=8)))
             return login_user_info.vip.end_time > current_time
-            
+
         except HttpBusinessException:
             return False
         except Exception as e:
@@ -272,14 +274,14 @@ class AccountService:
         try:
             # 获取当前登录用户信息
             login_user_info = await self.get_login_user_info()
-            
+
             # 检查角色列表中是否包含管理员或超级管理员角色
             admin_role_names = {RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN}
             user_role_names = {role.role_name for role in login_user_info.roles}
-            
+
             # 判断是否有交集（即用户是否拥有管理员或超级管理员角色）
             return bool(admin_role_names & user_role_names)
-            
+
         except HttpBusinessException:
             return False
         except Exception as e:
@@ -389,7 +391,7 @@ class AccountService:
 
             # 6. 构造 LoginUserInfo（使用工厂方法从 ORM 对象创建）
             login_user_info = LoginUserInfo.from_orm_objects(
-                user=user, 
+                user=user,
                 roles=roles,
                 user_vip=user_vip_info,
                 user_auths=user_auths
@@ -472,6 +474,52 @@ class AccountService:
             raise HttpBusinessException(HttpErrorCodeEnum.LOGIN_FAILED)
 
         return login_user_info.token
+
+    async def update_user(
+            self,
+            user_id: int,
+            phone_number: Optional[str] = None,
+            email: Optional[str] = None,
+            nickname: Optional[str] = None,
+            username: Optional[str] = None,
+            avatar: Optional[str] = None
+    ) -> User:
+        """
+        更新用户信息
+        :param user_id: 用户ID
+        :param phone_number: 用户手机号
+        :param email: 用户邮箱
+        :param nickname: 用户昵称
+        :param username: 用户名
+        :param avatar: 头像URL
+        :return: 更新后的用户对象
+        """
+        # 使用分布式锁防止重复提交
+        async with redis_client.lock(f"{self.UPDATE_USER_LOCK}{user_id}"):
+            # 查询用户是否存在
+            user = await user_service.get_by_id(user_id)
+            if not user:
+                raise HttpBusinessException("用户不存在")
+
+            # 更新用户信息
+            update_data = {}
+            if phone_number is not None:
+                update_data['phone'] = phone_number
+            if email is not None:
+                update_data['email'] = email
+            if nickname is not None:
+                update_data['nickname'] = nickname
+            if username is not None:
+                update_data['username'] = username
+            if avatar is not None:
+                update_data['avatar'] = avatar
+
+            await user_service.update_by_id(user_id, update_data)
+
+            # 刷新用户的登录缓存，使信息变更立即生效（不强制退出登录）
+            await self.refresh_user_login_cache(user_id)
+
+            return user
 
 
 account_service = AccountService()

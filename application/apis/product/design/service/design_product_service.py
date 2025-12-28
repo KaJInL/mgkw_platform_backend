@@ -1,4 +1,6 @@
 from typing import List, Dict, Any
+
+from application.service.account_service import account_service
 from application.service.design_service import design_service
 from application.service.product_service import product_service
 from application.service.design_access_service import design_access_service
@@ -69,6 +71,8 @@ class DesignProductService:
             design_id=req.design_id,
             include_deleted=False
         )
+        # 检查用户是否为vip
+        is_vip = await account_service.is_vip()
 
         # 检查设计作品是否存在且已通过审核
         if not design_info or design_info.state != DesignState.APPROVED:
@@ -77,13 +81,15 @@ class DesignProductService:
 
         product_info = None
         if design_info.product_id:
-            # 2. 获取 Product 详情 (包含SKU)
             product_info = await product_service.get_by_id_with_skus(
                 product_id=design_info.product_id
             )
 
         # 3. 检查是否有权限查看设计详情（resource_url和detail）
-        has_permission = await design_access_service.has_access(design_info)
+        if is_vip:
+            has_permission = True
+        else:
+            has_permission = await design_access_service.has_access(design_info)
 
         # 4. 构建返回数据
         design_dict = design_info.to_dict() if design_info else None

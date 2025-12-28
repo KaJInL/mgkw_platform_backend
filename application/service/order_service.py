@@ -129,9 +129,19 @@ class OrderService(BaseService[Order]):
             # 生成流水号
             serial_no = self._generate_serial_no()
 
+            # 根据商品类型生成订单名称
+            product_name = product_with_sku_info.name
+            if product_with_sku_info.product_type == ProductType.DESIGN:
+                order_name = f"{product_name} - 设计作品"
+            elif product_with_sku_info.product_type == ProductType.VIP:
+                order_name = f"{product_name} - 会员充值"
+            else:  # ProductType.PHYSICAL
+                order_name = product_name
+
             # 创建订单
             order = await self.model_class.create(
                 user_id=user_id,
+                name=order_name,
                 status=OrderStatus.PENDING,
                 total_amount=total_amount,
                 expire_time=expire_time,
@@ -444,6 +454,32 @@ class OrderService(BaseService[Order]):
             logger.error(f"❌ 缓存订单详情失败 {order_id}: {e}")
 
         return order_detail
+
+    async def get_order_list(
+            self,
+            user_id: int,
+            page_no: int = 1,
+            page_size: int = 10
+    ) :
+        """
+        获取用户的订单列表（分页）
+        :param user_id: 用户ID
+        :param page_no: 页码
+        :param page_size: 每页数量
+        :return: 包含订单列表、总数和是否有下一页的字典
+        """
+        # 构建查询条件：只查询指定用户的订单
+        query = self.model_class.filter(user_id=user_id)
+        
+        # 使用分页方法查询订单列表，按创建时间倒序排序
+        pagination_result = await self.paginate(
+            query=query,
+            page_no=page_no,
+            page_size=page_size,
+            order_by=["-created_at"]  # 按创建时间倒序
+        )
+
+        return pagination_result
 
 
 order_service = OrderService()

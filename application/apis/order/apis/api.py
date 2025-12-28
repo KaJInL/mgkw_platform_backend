@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 
 from application.apis.order.schema.request import CreateOrderReq
-from application.apis.order.schema.response import OrderDetail, CreateOrderRes, CancelOrderRes
+from application.apis.order.schema.response import OrderDetail, CreateOrderRes, CancelOrderRes, OrderListRes
 from application.common.helper import ResponseHelper
 from application.common.schema import BaseResponse
 from application.service.account_service import account_service
@@ -87,3 +87,31 @@ async def cancel_order(
             HttpErrorCodeEnum.SHOW_MESSAGE,
             message="订单状态不允许取消，只能取消待支付状态的订单"
         )
+
+
+@order.get(
+    "/order/list",
+    summary="获取订单列表",
+    response_model=BaseResponse[OrderListRes]
+)
+async def get_order_list(
+    page_no: int = Query(1, description="页码", gt=0, alias="pageNo"),
+    page_size: int = Query(10, description="每页数量", gt=0, le=100, alias="pageSize")
+):
+    """
+    获取订单列表
+    
+    获取当前用户的所有订单，支持分页查询。
+    """
+    # 获取当前登录用户信息
+    login_user_info = await account_service.get_login_user_info()
+    user_id = login_user_info.user.id
+    
+    # 调用服务层方法获取订单列表
+    order_list_data = await order_service.get_order_list(
+        user_id=user_id,
+        page_no=page_no,
+        page_size=page_size
+    )
+    
+    return ResponseHelper.success(order_list_data)

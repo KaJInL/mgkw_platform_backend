@@ -18,6 +18,7 @@ class PaymentType(str, Enum):
 
 class Order(DefaultModel):
     user_id = fields.IntField(description="用户ID")
+    name =  fields.CharField(null=True,max_length=255, description="订单名称")
     status = fields.CharEnumField(OrderStatus, default=OrderStatus.PENDING, description="订单状态")
     total_amount = fields.DecimalField(max_digits=10, decimal_places=2, description="订单总金额")
     pay_time = fields.DatetimeField(null=True, description="支付时间")

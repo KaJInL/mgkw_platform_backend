@@ -2,6 +2,8 @@ from fastapi.routing import APIRouter
 
 from application.apis.account.schema.request import LoginByPwdReq, WxCode2SessionReq, WxGetPhoneNumberReq
 from application.apis.account.schema.response import LoginRes, WxMiniprogramLoginByCodeRes
+from application.apis.user.schema.request import UpdateCurrentUserReq
+from application.apis.user.schema.response import UserInfoRes
 from application.common.helper import ResponseHelper
 from application.common.schema import BaseResponse, LoginUserInfo
 from application.common.utils import WxMiniProgramUtils
@@ -28,6 +30,44 @@ async def get_user_info():
     login_user_info = await account_service.get_login_user_info()
     user_dict = login_user_info.model_dump(exclude={'auths'})
     return ResponseHelper.success(user_dict)
+
+
+@api.post(
+    "/account/update-user-info",
+    summary="更新当前用户信息",
+    description="当前登录用户更新自己的个人信息，可以更新头像、昵称、用户名和邮箱",
+    response_model=BaseResponse[UserInfoRes],
+)
+async def update_current_user(req: UpdateCurrentUserReq):
+    """
+    更新当前用户信息
+    
+    可以更新以下字段：
+    - avatar: 头像URL
+    - nickname: 昵称
+    - username: 用户名（只能包含字母、数字、下划线）
+    - email: 邮箱
+    
+    Args:
+        req: 更新用户信息请求对象
+    """
+    # 获取当前登录用户信息
+    login_user_info = await account_service.get_login_user_info()
+    user_id = login_user_info.user.id
+
+    # 调用 account_service 更新用户信息（只传入允许的字段）
+    user = await account_service.update_user(
+        user_id=user_id,
+        phone_number=None,  # 不允许修改手机号
+        email=req.email,
+        nickname=req.nickname,
+        username=req.username,  # 不允许修改用户名
+        avatar=req.avatar
+    )
+
+    # 构建响应对象
+    new_login_user_info = await account_service.get_login_user_info()
+    return ResponseHelper.success(new_login_user_info)
 
 
 @api.post("/account/miniprogram/wx-login-by-code", summary="微信小程序获取session",

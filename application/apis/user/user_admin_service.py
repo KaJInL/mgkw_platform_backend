@@ -87,44 +87,15 @@ class UserAdminService(CoreService):
         :param req: 更新用户请求
         :return: 用户信息
         """
-        # 使用 user_service 查询用户是否存在
-        user = await user_service.get_by_id(req.user_id)
-        if not user:
-            raise HttpBusinessException("用户不存在")
-
-        # 检查手机号是否被其他用户使用
-        if req.phone_number and req.phone_number != user.phone:
-            existing_user = await user_service.get_user_by_phone(req.phone_number)
-            if existing_user and existing_user.id != user.id:
-                raise HttpBusinessException("手机号已被其他用户使用")
-
-        # 检查邮箱是否被其他用户使用
-        if req.email and req.email != user.email:
-            existing_user = await user_service.get_user_by_email(req.email)
-            if existing_user and existing_user.id != user.id:
-                raise HttpBusinessException("邮箱已被其他用户使用")
-
-        # 更新用户信息
-        update_data = {}
-        if req.phone_number is not None:
-            update_data['phone'] = req.phone_number
-        if req.email is not None:
-            update_data['email'] = req.email
-        if req.nickname is not None:
-            update_data['nickname'] = req.nickname
-        if req.username is not None:
-            update_data['username'] = req.username
-        if req.avatar is not None:
-            update_data['avatar'] = req.avatar
-
-        if update_data:
-            # 使用 user_service 更新用户
-            await user_service.update_by_id(req.user_id, update_data)
-            # 重新查询用户
-            user = await user_service.get_by_id(req.user_id)
-            
-            # 刷新用户的登录缓存，使信息变更立即生效（不强制退出登录）
-            await account_service.refresh_user_login_cache(req.user_id)
+        # 调用 account_service 更新用户信息
+        user = await account_service.update_user(
+            user_id=req.user_id,
+            phone_number=req.phone_number,
+            email=req.email,
+            nickname=req.nickname,
+            username=req.username,
+            avatar=req.avatar
+        )
 
         return UserInfoRes(
             id=user.id,
