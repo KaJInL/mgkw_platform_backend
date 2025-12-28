@@ -6,7 +6,7 @@ from application.service.product_service import product_service
 from application.service.design_access_service import design_access_service
 from application.service.user_design_license_service import user_design_license_service
 from application.common.models.design import Design, DesignState
-from application.common.models import SKU
+from application.common.models import UserDesignLicense
 from application.common.constants import BoolEnum
 from application.apis.product.schema.request import QueryDesignProductListReq, GetDesignProductDetailReq
 from application.core.logger_util import logger
@@ -16,7 +16,7 @@ from application.core.redis_client import redis_client, TimeUnit
 class DesignProductService:
     # 缓存键前缀
     CACHE_PREFIX = "purchased_design_products"
-    
+
     async def invalidate_purchased_cache(self, user_id: int):
         """
         清除用户已购买设计作品列表的缓存
@@ -26,7 +26,7 @@ class DesignProductService:
         cache_key = f"{self.CACHE_PREFIX}:{user_id}"
         await redis_client.delete(cache_key)
         logger.info(f"🗑️ 已清除用户 {user_id} 的已购作品列表缓存")
-    
+
     async def query_design_product_list(self, req: QueryDesignProductListReq):
         """
         前端查询设计作品商品列表
@@ -114,85 +114,76 @@ class DesignProductService:
             "product": product_info.model_dump() if product_info else None
         }
 
-    async def get_purchased_design_products(self, user_id: int) -> List[Dict[str, Any]]:
+    async def get_purchased_design_products(
+            self,
+            user_id: int,
+            page: int = 1,
+            page_size: int = 10
+    ):
         """
-        获取用户已购买的所有设计作品商品列表
+        获取用户已购买的设计作品商品列表（分页查询）
         
         :param user_id: 用户ID
-        :return: 商品列表 [{img_url: "", name: "", product_id: ""}]
+        :param page: 页码，从1开始
+        :param page_size: 每页数量
+        :return: 分页数据 {list: [...], total: 0, hasNext: false}
         """
-        # 1. 从缓存获取完整结果
-        cache_key = f"{self.CACHE_PREFIX}:{user_id}"
-        cached_result = await redis_client.get(cache_key)
-        if cached_result:
-            logger.debug(f"✅ 从缓存获取用户 {user_id} 的已购作品列表")
-            return cached_result
+        # 1. 构建查询条件，使用 user_design_license_service 的分页方法
+        query = UserDesignLicense.filter(user_id=user_id)
 
-        # 3. 获取用户已购买的所有设计作品ID列表
-        design_ids = await user_design_license_service.get_user_purchased_design_ids(user_id)
+        # 2. 使用 paginate_dic 进行分页查询，只选择需要的字段
+        pagination_result = await user_design_license_service.paginate_dic(
+            query=query,
+            page_no=page,
+            page_size=page_size,
+            select_fields=["design_id", "product_id"],
+            order_by=["-created_at"]
+        )
 
-        if not design_ids:
-            # 如果没有购买记录，缓存空列表（30秒）
-            await redis_client.set(cache_key, [], 30, TimeUnit.SECONDS)
-            return []
+        license_list = pagination_result.get("list", [])
+        if not license_list: return pagination_result
 
-        # 4. 通过 design_id 查询对应的 SKU，获取 product_id
-        skus = await SKU.filter(design_id__in=design_ids).all()
+        # 3. 提取 design_id 列表（去重）并构建 design_id 到 product_id 的映射
+        design_to_product_map = {}
+        seen_design_ids = set()
+        for license_item in license_list:
+            design_id = license_item.get("design_id")
+            if design_id and design_id not in seen_design_ids:
+                seen_design_ids.add(design_id)
+                design_to_product_map[design_id] = license_item.get("product_id")
 
-        if not skus:
-            # 如果没有找到对应的SKU，缓存空列表（1分钟）
-            await redis_client.set(cache_key, [], 1, TimeUnit.MINUTES)
-            return []
+        design_ids = list(design_to_product_map.keys())
+        if not design_ids: return pagination_result
 
-        # 5. 获取所有唯一的 product_id
-        product_ids = list(set([sku.product_id for sku in skus]))
+        # 4. 批量查询设计作品信息
+        designs = await design_service.get_by_ids(design_ids)
 
-        # 6. 批量查询商品信息（使用 mget 优化）
-        # 先尝试从缓存批量获取
-        cache_keys = [f"product_bk:item:{pid}" for pid in product_ids]
-        cached_products = await redis_client.mget(cache_keys)
+        # 5. 构建返回结果
+        result_list = []
+        for design_dict in designs:
+            design_id = design_dict.get("id")
+            if not design_id or design_id not in design_to_product_map:
+                continue
 
-        # 7. 处理缓存结果，找出未命中的 product_id
-        products = []
-        missing_product_ids = []
+            title = design_dict.get("title", "")
+            images = design_dict.get("images", [])
+            product_id = design_to_product_map.get(design_id)
 
-        for i, cached_product in enumerate(cached_products):
-            if cached_product:
-                products.append(cached_product)
-            else:
-                missing_product_ids.append(product_ids[i])
+            # 获取第一张图片作为封面图
+            img_url = images[0] if images and len(images) > 0 else None
 
-        # 8. 查询缓存未命中的商品
-        if missing_product_ids:
-            for product_id in missing_product_ids:
-                product = await product_service.get_by_id(product_id)
-                if product:
-                    products.append(product.to_dict())
-
-        # 9. 构建返回结果
-        result = []
-        for product_data in products:
-            # 兼容 dict 和 Product 对象
-            if isinstance(product_data, dict):
-                img_url = product_data.get("cover_image")
-                name = product_data.get("name")
-                product_id = product_data.get("id")
-            else:
-                img_url = product_data.cover_image
-                name = product_data.name
-                product_id = product_data.id
-
-            result.append({
+            result_list.append({
                 "img_url": img_url,
-                "name": name,
-                "product_id": product_id
+                "name": title,
+                "product_id": product_id,
+                "design_id": design_id
             })
 
-        # 10. 缓存结果（5分钟）
-        await redis_client.set(cache_key, result, 5, TimeUnit.MINUTES)
-        logger.debug(f"💾 已缓存用户 {user_id} 的已购作品列表")
-
-        return result
+        return {
+            "list": result_list,
+            "total": pagination_result.get("total", 0),
+            "hasNext": pagination_result.get("hasNext", False)
+        }
 
 
 design_product_service = DesignProductService()

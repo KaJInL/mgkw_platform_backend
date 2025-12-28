@@ -1,7 +1,7 @@
 from itertools import product
 
 from application.common.base import BaseService
-from application.common.models import UserDesignLicense, DesignLicensePlan, LicenseType
+from application.common.models import UserDesignLicense, DesignLicensePlan, LicenseType, SKU
 from application.common.models.design import DesignState
 from application.core.lifespan import logger
 from application.core.redis_client import redis_client, TimeUnit
@@ -42,7 +42,7 @@ class UserDesignLicenseService(BaseService[UserDesignLicense]):
         from application.apis.product.design.service.design_product_service import design_product_service
         await design_product_service.invalidate_purchased_cache(user_id)
 
-    async def bind_license(self, user_id: int, design_id: int, design_license_plan: DesignLicensePlan):
+    async def bind_license(self, user_id: int, sku : SKU, design_license_plan: DesignLicensePlan):
         """
         绑定授权
         """
@@ -51,27 +51,28 @@ class UserDesignLicenseService(BaseService[UserDesignLicense]):
         # 创建用户设计授权记录
         user_design_license = await UserDesignLicense.create(
             user_id=user_id,
-            design_id=design_id,
+            design_id=sku.design_id,
+            product_id = sku.product_id,
             design_license_plan_id=design_license_plan.id,
             is_buyout=is_buyout,
             license_type=design_license_plan.license_type
         )
 
         # 清除用户购买相关的缓存，确保用户能立即看到新购买的作品
-        await self.invalidate_user_purchase_cache(user_id,design_id)
+        await self.invalidate_user_purchase_cache(user_id,sku.design_id)
 
         # 如果是买断授权的话,需要更新设计状态和商品状态
         if not is_buyout:
             return user_design_license
 
         # 获取设计作品信息
-        design = await design_service.get_by_id(design_id)
+        design = await design_service.get_by_id(sku.design_id)
         if not design:
             return user_design_license
 
         # 将设计的状态设置为买断
         await design_service.change_design_state(
-            design_id=design_id,
+            design_id=sku.design_id,
             user_id=design.user_id,
             new_state=DesignState.BOUGHT_OUT
         )
@@ -82,7 +83,7 @@ class UserDesignLicenseService(BaseService[UserDesignLicense]):
                 product_id=design.product_id,
                 is_published=False
             )
-        await self.has_license(user_id, design_id)
+        await self.has_license(user_id, sku.design_id)
         return user_design_license
 
     async def get_user_purchased_design_ids(self, user_id: int) -> list[int]:

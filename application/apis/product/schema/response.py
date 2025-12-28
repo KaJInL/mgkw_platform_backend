@@ -60,3 +60,4 @@ class PurchasedDesignProductItemRes(BaseModel):
     img_url: Optional[str] = None
     name: str
     product_id: Optional[int] = None
+    design_id: Optional[int] = None

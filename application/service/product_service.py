@@ -18,7 +18,7 @@ class ProductService(BaseService[Product]):
     """产品service"""
 
     # Redis 缓存键前缀
-    CACHE_PREFIX = "product_bk"
+    CACHE_PREFIX = "product"
     CACHE_ITEM_KEY = f"{CACHE_PREFIX}:item"
     CACHE_WITH_SKUS_KEY = f"{CACHE_PREFIX}:with_skus"
 

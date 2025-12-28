@@ -62,6 +62,7 @@ class DesignLicensePlan(DefaultModel):
 class UserDesignLicense(DefaultModel):
     user_id = fields.IntField(description="用户ID")
     design_id = fields.IntField(description="设计作品ID")
+    product_id = fields.IntField(null=True, description="关联产品ID")
     license_type = fields.CharEnumField(LicenseType, description="授权类型")
     is_buyout = fields.BooleanField(default=False, description="是否买断")
 

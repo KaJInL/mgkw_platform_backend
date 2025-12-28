@@ -31,4 +31,4 @@ class DesignProductHandler(PaymentSuccessHandler):
             return
 
         # 给用户绑定授权方案
-        await user_design_license_service.bind_license(order_detail.user_id,sku.design_id,license_plan)
+        await user_design_license_service.bind_license(order_detail.user_id,sku,license_plan)
