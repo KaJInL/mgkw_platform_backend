@@ -40,3 +40,6 @@ class UpdateVipProductReq(BaseModel):
     sort: Optional[int] = Field(None, description="排序")
     status: Optional[int] = Field(None, description="状态")
     privileges: Optional[str] = Field(None, description="套餐权益富文本")
+
+class QueryProductByKeywordReq(BaseModel):
+    keyword: Optional[str] = Field(None, description="搜索关键词")

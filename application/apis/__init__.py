@@ -22,6 +22,7 @@ def register_routes(app: FastAPI):
     from .product import product_router
     from .order import order_router
     from .payment import payment_router
+    from .recommend import recommend_router
 
     # 先注册具体的业务路由
     api_route.include_router(account_router)
@@ -32,6 +33,7 @@ def register_routes(app: FastAPI):
     api_route.include_router(design_router)
     api_route.include_router(order_router)
     api_route.include_router(payment_router)
+    api_route.include_router(recommend_router)
     # 最后注册通配符路由（避免匹配冲突）
     api_route.include_router(common_router)
     app.include_router(api_route, prefix=config.prefix)

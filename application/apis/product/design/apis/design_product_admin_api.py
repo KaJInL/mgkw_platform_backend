@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from application.apis.product.design.service.design_product_admin_service import design_product_admin_service
 from application.apis.product.schema.request import (
     QueryDesignProductListReq, AuditDesignProductReq, GetDesignProductDetailReq, UpdateSkuReq
 )
-from application.apis.product.schema.response import DesignProductInfoRes, DesignProductDetailRes
+from application.apis.product.schema.response import DesignProductInfoRes, DesignProductDetailRes, ProductSimpleInfoRes
 from application.common.helper import ResponseHelper
 from application.common.schema import PaginationData, BaseResponse
+from typing import List, Optional
 
 design_product_admin = APIRouter(tags=["设计作品商品管理接口"])
 
@@ -41,4 +42,21 @@ async def get_design_product_detail(req: GetDesignProductDetailReq = Depends()):
 )
 async def update_design_product_sku(req: UpdateSkuReq):
     result = await design_product_admin_service.update_sku(req)
+    return ResponseHelper.success(result)
+
+@design_product_admin.get(
+    "/admin/product/search",
+    summary="搜索商品（仅返回id、封面图片、名称）",
+    response_model=BaseResponse[PaginationData[ProductSimpleInfoRes]]
+)
+async def search_product_by_keyword(
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    page_no: int = Query(1, description="页码", gt=0, alias="pageNo"),
+    page_size: int = Query(10, description="每页数量", gt=0, le=100, alias="pageSize")
+):
+    result = await design_product_admin_service.search_product_by_keyword(
+        keyword=keyword,
+        page_no=page_no,
+        page_size=page_size
+    )
     return ResponseHelper.success(result)

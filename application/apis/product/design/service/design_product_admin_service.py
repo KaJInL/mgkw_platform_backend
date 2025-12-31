@@ -1,11 +1,13 @@
 from tortoise.transactions import atomic
+from typing import Optional, List
 from application.service.design_service import design_service
 from application.service.product_service import product_service
 from application.service.sku_service import sku_service
 from application.common.models.design import Design, DesignState
-from application.common.models.product import ProductCheckState
+from application.common.models.product import Product, ProductCheckState
 from application.common.constants import BoolEnum
 from application.apis.product.schema.request import QueryDesignProductListReq, AuditDesignProductReq, GetDesignProductDetailReq, UpdateSkuReq
+from application.apis.product.schema.response import ProductSimpleInfoRes
 from application.core.logger_util import logger
 
 class DesignProductAdminService:
@@ -134,5 +136,44 @@ class DesignProductAdminService:
         
         logger.info(f"更新 SKU {req.sku_id} 价格完成: {req.price}")
         return True
+
+    async def search_product_by_keyword(
+        self, 
+        keyword: Optional[str] = None,
+        page_no: int = 1,
+        page_size: int = 10
+    ) -> List[ProductSimpleInfoRes]:
+        """
+        搜索商品（仅返回id、封面图片、名称）
+        
+        :param keyword: 搜索关键词
+        :param page_no: 页码
+        :param page_size: 每页数量
+        :return: 商品简单信息列表
+        """
+        # 构建查询条件：只查询未删除的商品
+        query = Product.filter(is_deleted=BoolEnum.NO)
+        
+        # 如果有关键词，进行模糊搜索
+        if keyword:
+            query = query.filter(name__icontains=keyword)
+        
+        # 分页查询，只选择需要的字段
+        select_fields = ["id", "cover_image", "name"]
+        
+        # 使用 product_service 的分页方法
+        pagination_result = await product_service.paginate_dic(
+            query=query,
+            page_no=page_no,
+            page_size=page_size,
+            select_fields=select_fields,
+            order_by=["-created_at"]
+        )
+        
+        # 转换为 ProductSimpleInfoRes 列表
+        product_list = pagination_result.get("list", [])
+        result = [ProductSimpleInfoRes(**item) for item in product_list]
+        
+        return result
 
 design_product_admin_service = DesignProductAdminService()

@@ -61,3 +61,12 @@ class PurchasedDesignProductItemRes(BaseModel):
     name: str
     product_id: Optional[int] = None
     design_id: Optional[int] = None
+
+class ProductSimpleInfoRes(BaseModel):
+    """商品简单信息（仅包含id、封面图片、名称）"""
+    id: int = Field(description="商品ID")
+    cover_image: Optional[str] = Field(None, description="商品封面图URL")
+    name: str = Field(description="商品名称")
+
+    class Config:
+        from_attributes = True
