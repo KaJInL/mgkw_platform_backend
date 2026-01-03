@@ -1,0 +1,67 @@
+stages:
+  - deploy
+
+variables:
+  IMAGE_NAME: mgkw_backend
+  IMAGE_TAR: mgkw_backend.tar
+  SERVER_HOST: www.zhuxuanwo.com
+  SERVER_USER: root
+  DEPLOY_PATH: /opt/docker/mgkw-platform
+
+# 只在 main 和 cicd-test 分支触发
+workflow:
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# 构建并部署到服务器
+deploy:
+  stage: deploy
+  tags:
+    - shell
+  script:
+    - echo "========== 步骤1：构建 Docker 镜像 =========="
+    - docker build -t ${IMAGE_NAME}:latest .
+
+    - echo "========== 步骤2：导出镜像到 tar 包 =========="
+    - docker save ${IMAGE_NAME}:latest -o ${IMAGE_TAR}
+    - ls -lh ${IMAGE_TAR}
+
+    - echo "========== 步骤3：删除服务器上的旧镜像压缩包 =========="
+    - ssh ${SERVER_USER}@${SERVER_HOST} "rm -f ${DEPLOY_PATH}/${IMAGE_TAR}"
+
+    - echo "========== 步骤4：上传镜像到服务器 =========="
+    - scp ${IMAGE_TAR} ${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/
+
+    - echo "========== 步骤5：在服务器上导入镜像 =========="
+    - ssh ${SERVER_USER}@${SERVER_HOST} "cd ${DEPLOY_PATH} && docker load -i ${IMAGE_TAR}"
+
+    - echo "========== 步骤6：创建镜像标签 =========="
+    - ssh ${SERVER_USER}@${SERVER_HOST} "docker tag ${IMAGE_NAME}:latest mgkw-backend:latest"
+
+    - echo "========== 步骤7：停止服务器上的现有容器 =========="
+    - ssh ${SERVER_USER}@${SERVER_HOST} "cd ${DEPLOY_PATH} && docker compose down"
+
+    - echo "========== 步骤8：删除服务器上的旧镜像 =========="
+    - ssh ${SERVER_USER}@${SERVER_HOST} "docker image prune -f"
+
+    - echo "========== 步骤9：启动服务 =========="
+    - ssh ${SERVER_USER}@${SERVER_HOST} "cd ${DEPLOY_PATH} && docker compose up -d"
+
+    - echo "========== 步骤10：查看服务状态 =========="
+    - ssh ${SERVER_USER}@${SERVER_HOST} "cd ${DEPLOY_PATH} && docker compose ps"
+
+    - echo "========== 步骤11：清理服务器上的镜像压缩包 =========="
+    - ssh ${SERVER_USER}@${SERVER_HOST} "rm -f ${DEPLOY_PATH}/${IMAGE_TAR}"
+
+    - echo "========== 步骤12：清理 runner 本地镜像包 =========="
+    - rm -f ${IMAGE_TAR}
+
+    - echo "========== 部署完成！ =========="
+  after_script:
+    - rm -f ${IMAGE_TAR}
+  only:
+    - main
+    - cicd-test
+  environment:
+    name: production
+    url: https://${SERVER_HOST}
