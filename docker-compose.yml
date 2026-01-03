@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # FastAPI 服务
+  backend:
+    image: mgkw-backend
+    container_name: mgkw-backend
+    env_file:
+      - .env
+    environment:
+      - WORKERS=4
+      - LOG_LEVEL=info
+    volumes:
+      - ./certs:/app/certs
+      - ./uploads:/app/uploads
+    command: fastapi
+    restart: unless-stopped
+    network_mode: "host"   # 使用 host 网络
+
+  # Celery Worker
+  celery:
+    image: mgkw-backend
+    container_name: mgkw-celery
+    env_file:
+      - .env
+    volumes:
+      - ./certs:/app/certs
+      - ./uploads:/app/uploads
+    command: celery
+    restart: unless-stopped
+    depends_on:
+      - backend
+    network_mode: "host"   # 使用 host 网络
+
+  # Celery Beat (定时任务)
+  celery-beat:
+    image: mgkw-backend
+    container_name: mgkw-celery-beat
+    env_file:
+      - .env
+    volumes:
+      - ./certs:/app/certs
+      - ./uploads:/app/uploads
+    command: celery-beat
+    restart: unless-stopped
+    depends_on:
+      - celery
+    network_mode: "host"   # 使用 host 网络

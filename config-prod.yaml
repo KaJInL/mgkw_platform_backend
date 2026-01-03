@@ -1,0 +1,58 @@
+debug_mode: true
+base_url: https://www.zhuxuanwo.com/mgkw-platform
+secret_key: Z9czYogOKKwVxJJu2S8PcQgOwoQpEaLk2xz74ytOIKk=
+project_name: mgkw-platform
+prefix: /mgkw-platform
+doc:
+  docs_url: /docs
+  enable_docs: true
+  redoc_url: /redoc
+  enable_redoc: true
+database:
+  host: 127.0.0.1
+  port: 3306
+  user: ${MYSQL_USER}
+  password: ${MYSQL_PASSWORD}
+  name: mgkw_platform
+  charset: utf8mb4
+  echo: true
+log:
+  # NOTSET, DEBUG, INFO , WARNING, ERROR, CRITICAL
+  level: DEBUG
+  file: logs/app.log
+redis:
+  host: localhost
+  port: 6379
+  db: 1
+  max_connections: 10
+upload:
+  dir: uploads
+celery:
+  broker_url: redis://localhost:6379/2
+  result_backend: redis://localhost:6379/3
+  task_serializer: json
+  result_serializer: json
+  accept_content: [ json ]
+  result_expires: 3600
+  timezone: Asia/Shanghai
+auth:
+  # 登录token过期时间（天）
+  token_expire_days: 7
+  # 单个用户最大登录设备数（0表示不限制）
+  max_tokens_per_user: 0
+
+order:
+  # 待支付订单过期时间（分钟）
+  expire_minutes: 30
+
+# 微信支付配置（可选，如需使用微信支付功能请配置）
+wechat_pay:
+  appid: ${WX_APP_ID}  # 公众账号ID，需与mchid有绑定关系
+  mchid: ${WECHAT_MCHID}  # 商户号
+  api_key: ${WECHAT_API_KEY}  # API密钥（用于签名）
+  private_key_path: ${WECHAT_PRIVATE_KEY_PATH}  # 商户私钥文件路径（PEM格式）
+  cert_serial_no: ${WECHAT_CERT_SERIAL_NO}
+  notify_url: ${WECHAT_NOTIFY_URL}  # 支付回调通知地址，如：https://yourdomain.com/api/payment/wechat/notify
+miniprogram:
+  wechat_app_id: ${WX_APP_ID}
+  wechat_app_secret: ${WX_APP_SECRET}

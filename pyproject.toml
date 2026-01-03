@@ -21,6 +21,7 @@ dependencies = [
     "setuptools>=80.9.0",
     "tomlkit>=0.13.3",
     "tortoise-orm==0.22.0",
+    "uvicorn>=0.38.0",
 ]
 
 [tool.aerich]
