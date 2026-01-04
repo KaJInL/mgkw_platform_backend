@@ -1,5 +1,5 @@
 debug_mode: ${DEBUG_MODE}
-base_url: https://www.zhuxuanwo.com/mgkw-platform
+base_url: https://api.zhuxuanwo.com/mgkw-platform
 secret_key: Z9czYogOKKwVxJJu2S8PcQgOwoQpEaLk2xz74ytOIKk=
 project_name: mgkw-platform
 prefix: /mgkw-platform
