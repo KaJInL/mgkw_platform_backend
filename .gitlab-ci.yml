@@ -56,9 +56,13 @@ deploy:
     - echo "========== 步骤12：清理 runner 本地镜像包 =========="
     - rm -f ${IMAGE_TAR}
 
+    - echo "========== 步骤13：清理 runner 本地镜像 =========="
+    - docker rmi ${IMAGE_NAME}:latest
+
     - echo "========== 部署完成！ =========="
   after_script:
     - rm -f ${IMAGE_TAR}
+    - docker rmi ${IMAGE_NAME}:latest || true
   only:
     - main
     - cicd-test
